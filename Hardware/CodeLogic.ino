@@ -26,9 +26,9 @@ const char* serverUrl = "https://young-hornets-tell.loca.lt/api/v1/water/ingest"
 String deviceId = "home-hw-001"; // Change to your preferred device ID
 
 // Hardware Pins
-const int FLOW_SENSOR_PIN = 14; // YF-S201 (Must support external interrupts)
-const int VALVE_PIN = 12;       // Relay or MOSFET gate controlling the 12V Valve
-const int STATUS_LED = 2;       // Onboard LED for status indication
+const int FLOW_SENSOR_PIN = 14; // YF-S201 (Yellow Signal Wire)
+const int VALVE_LED_PIN = 12;   // Simulation LED (GPIO 12 -> Resistor -> GND)
+const int STATUS_LED_PIN = 2;   // Onboard ESP32 Connectivity LED
 
 // Timer intervals (sending data every X ms)
 const unsigned long SYNC_INTERVAL_MS = 2000; 
@@ -64,15 +64,15 @@ void setup() {
   Serial.println("\n--- AquaAudit JA ESP32 Hardware Boot ---");
 
   // Initialize Pins
-  pinMode(STATUS_LED, OUTPUT);
-  pinMode(VALVE_PIN, OUTPUT);
+  pinMode(STATUS_LED_PIN, OUTPUT);
+  pinMode(VALVE_LED_PIN, OUTPUT);
   pinMode(FLOW_SENSOR_PIN, INPUT_PULLUP);
   
   // Attach Flow Sensor Interrupt (Falling Edge)
   attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_PIN), pulseCounter, FALLING);
 
-  // Set initial valve state
-  digitalWrite(VALVE_PIN, valveOpen ? HIGH : LOW);
+  // Set initial valve state (LED starts the same)
+  digitalWrite(VALVE_LED_PIN, valveOpen ? HIGH : LOW);
 
   // Connect to WiFi
   Serial.print("[WIFI] Connecting to ");
@@ -81,10 +81,10 @@ void setup() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
-    digitalWrite(STATUS_LED, !digitalRead(STATUS_LED)); // Blink while connecting
+    digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN)); // Blink while connecting
   }
   
-  digitalWrite(STATUS_LED, HIGH); // Solid ON when connected
+  digitalWrite(STATUS_LED_PIN, HIGH); // Solid ON when connected
   Serial.println("\n[WIFI] Connected!");
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
@@ -191,11 +191,10 @@ void sendDataAndReceiveCommands() {
           bool targetValve = cmds["valveOpen"];
           if (targetValve != valveOpen) {
             valveOpen = targetValve;
-            // Write to Hardware Relay PIN
-            // Note: Update logic based on whether your relay is Active-HIGH or Active-LOW
-            digitalWrite(VALVE_PIN, valveOpen ? HIGH : LOW);
-            Serial.print("[CMD] Valve Remote ");
-            Serial.println(valveOpen ? "OPENED" : "CLOSED");
+            // Write to Simulation LED
+            digitalWrite(VALVE_LED_PIN, valveOpen ? HIGH : LOW);
+            Serial.print("[CMD] Valve Simulation LED ");
+            Serial.println(valveOpen ? "ON (OPEN)" : "OFF (CLOSED)");
           }
         }
         

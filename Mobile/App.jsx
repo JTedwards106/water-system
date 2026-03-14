@@ -135,7 +135,7 @@ export default function App() {
             // Linked — bottom tab navigator
             <Stack.Navigator screenOptions={{ headerShown: false }}>
               <Stack.Screen name="MainTabs">
-                {() => <MainTabs user={user} activeMeter={activeMeter} setActiveMeter={setActiveMeter} meters={meters} onLogout={handleLogout} />}
+                {({ navigation }) => <MainTabs user={user} activeMeter={activeMeter} setActiveMeter={setActiveMeter} meters={meters} onLogout={handleLogout} navigation={navigation} />}
               </Stack.Screen>
               <Stack.Screen name="LinkMeter">
                 {({ navigation }) =>

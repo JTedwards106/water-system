@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: aquasmart-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5433/aquasmart
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: aquasmart-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  snowflake:
+    url: ${SNOWFLAKE_URL:jdbc:snowflake://account.snowflakecomputing.com}
+    user: ${SNOWFLAKE_USER:user}
+    password: ${SNOWFLAKE_PASSWORD:password}
+    database: ${SNOWFLAKE_DATABASE:AQUASMART_DB}
+    schema: ${SNOWFLAKE_SCHEMA:PUBLIC}
+    warehouse: ${SNOWFLAKE_WAREHOUSE:COMPUTE_WH}
+    role: ${SNOWFLAKE_ROLE:ACCOUNTADMIN}
+
+server:
+  port: 8081
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    com.aquasmart: DEBUG
+  file:
+    name: logs/aquasmart.log

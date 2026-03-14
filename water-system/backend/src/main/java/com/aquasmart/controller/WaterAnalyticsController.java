@@ -26,19 +26,19 @@ public class WaterAnalyticsController {
     private final DeviceReadingRepository repository;
     private final UserAccountRepository userAccountRepository;
     private final WaterDataProducer producer;
+    private final CommandService commandService;
     private final ObjectMapper objectMapper;
     private volatile String lastReceivedData = "No data received yet.";
-
-    // Store pending commands for devices
-    private final Map<String, Map<String, Object>> pendingCommands = new ConcurrentHashMap<>();
 
     public WaterAnalyticsController(DeviceReadingRepository repository,
             UserAccountRepository userAccountRepository,
             WaterDataProducer producer,
+            CommandService commandService,
             ObjectMapper objectMapper) {
         this.repository = repository;
         this.userAccountRepository = userAccountRepository;
         this.producer = producer;
+        this.commandService = commandService;
         this.objectMapper = objectMapper;
     }
 
@@ -87,7 +87,7 @@ public class WaterAnalyticsController {
             // --- AUTOMATIC BALANCE ENFORCEMENT ---
             enforceBalanceLimit(deviceId);
 
-            Map<String, Object> commands = pendingCommands.getOrDefault(deviceId, new HashMap<>());
+            Map<String, Object> commands = commandService.getAndClearCommands(deviceId);
             response.put("commands", commands);
 
             return ResponseEntity.ok(objectMapper.writeValueAsString(response));
@@ -170,8 +170,7 @@ public class WaterAnalyticsController {
         else if ("false".equalsIgnoreCase(value))
             parsedValue = false;
 
-        pendingCommands.computeIfAbsent(deviceId, k -> new ConcurrentHashMap<>())
-                .put(command, parsedValue);
+        commandService.setCommand(deviceId, command, parsedValue);
 
         log.info("Command SET for {}: {} = {}", deviceId, command, parsedValue);
         return ResponseEntity.ok("Command scheduled");
@@ -194,8 +193,7 @@ public class WaterAnalyticsController {
             if (account.isValveDisabledByBalance()) {
                 log.warn("ENFORCING SHUTOFF for device {} due to low balance.", deviceId);
                 // Override any manual "open" command with a forced "close"
-                pendingCommands.computeIfAbsent(deviceId, k -> new ConcurrentHashMap<>())
-                        .put("valveOpen", false);
+                commandService.setCommand(deviceId, "valveOpen", false);
             }
         });
     }

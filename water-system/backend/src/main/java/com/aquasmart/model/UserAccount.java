@@ -35,6 +35,12 @@ public class UserAccount {
     @Column
     private String registeredPhone;
 
+    @Column(nullable = false)
+    private BigDecimal targetAmount = BigDecimal.ZERO;
+
+    @Column(nullable = false)
+    private BigDecimal cumulativeUsage = BigDecimal.ZERO;
+
     public UserAccount() {
     }
 
@@ -47,11 +53,21 @@ public class UserAccount {
         this.premiseId = b.premiseId;
         this.registeredEmail = b.registeredEmail;
         this.registeredPhone = b.registeredPhone;
+        this.targetAmount = b.targetAmount;
+        this.cumulativeUsage = b.cumulativeUsage;
     }
 
     // ---- Business methods ----
     public void deduct(BigDecimal amount) {
         this.balance = this.balance.subtract(amount);
+    }
+
+    public void trackUsage(BigDecimal liters) {
+        this.cumulativeUsage = this.cumulativeUsage.add(liters);
+    }
+
+    public boolean isTargetReached() {
+        return targetAmount.compareTo(BigDecimal.ZERO) > 0 && cumulativeUsage.compareTo(targetAmount) >= 0;
     }
 
     public void topUp(BigDecimal amount) {
@@ -98,6 +114,14 @@ public class UserAccount {
         return registeredPhone;
     }
 
+    public BigDecimal getTargetAmount() {
+        return targetAmount;
+    }
+
+    public BigDecimal getCumulativeUsage() {
+        return cumulativeUsage;
+    }
+
     // ---- Setters ----
     public void setId(Long id) {
         this.id = id;
@@ -135,6 +159,14 @@ public class UserAccount {
         this.registeredPhone = registeredPhone;
     }
 
+    public void setTargetAmount(BigDecimal targetAmount) {
+        this.targetAmount = targetAmount;
+    }
+
+    public void setCumulativeUsage(BigDecimal cumulativeUsage) {
+        this.cumulativeUsage = cumulativeUsage;
+    }
+
     // ---- Builder ----
     public static Builder builder() {
         return new Builder();
@@ -148,6 +180,8 @@ public class UserAccount {
         private String premiseId;
         private String registeredEmail;
         private String registeredPhone;
+        private BigDecimal targetAmount = BigDecimal.ZERO;
+        private BigDecimal cumulativeUsage = BigDecimal.ZERO;
 
         public Builder deviceId(String v) {
             this.deviceId = v;
@@ -186,6 +220,16 @@ public class UserAccount {
 
         public Builder registeredPhone(String v) {
             this.registeredPhone = v;
+            return this;
+        }
+
+        public Builder targetAmount(BigDecimal v) {
+            this.targetAmount = v;
+            return this;
+        }
+
+        public Builder cumulativeUsage(BigDecimal v) {
+            this.cumulativeUsage = v;
             return this;
         }
 

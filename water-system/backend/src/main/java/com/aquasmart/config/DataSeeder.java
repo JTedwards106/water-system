@@ -18,8 +18,8 @@ public class DataSeeder {
             if (repository.count() == 0) {
                 // Seed 10 official virtual meter records
                 IntStream.rangeClosed(1, 10).forEach(i -> {
-                    String deviceId = "home-sim-" + String.format("%03d", i);
-                    String ownerName = "Official Owner " + i;
+                    String deviceId = (i == 1) ? "home-hw-001" : "home-sim-" + String.format("%03d", i);
+                    String ownerName = (i == 1) ? "Demo Hardware Owner" : "Official Owner " + i;
                     String premiseId = "PREM-" + (1000 + i);
 
                     UserAccount account = UserAccount.builder()
@@ -31,6 +31,7 @@ public class DataSeeder {
                             .valveDisabledByBalance(false)
                             .registeredEmail("owner" + i + "@example.com")
                             .registeredPhone("876-555-000" + i)
+                            .targetAmount(new BigDecimal("5.00")) // Default 5L target for demo
                             .build();
 
                     repository.save(account);

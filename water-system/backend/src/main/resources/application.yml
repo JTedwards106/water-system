@@ -18,6 +18,14 @@ spring:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  snowflake:
+    url: ${SNOWFLAKE_URL:jdbc:snowflake://account.snowflakecomputing.com}
+    user: ${SNOWFLAKE_USER:user}
+    password: ${SNOWFLAKE_PASSWORD:password}
+    database: ${SNOWFLAKE_DATABASE:AQUASMART_DB}
+    schema: ${SNOWFLAKE_SCHEMA:PUBLIC}
+    warehouse: ${SNOWFLAKE_WAREHOUSE:COMPUTE_WH}
+    role: ${SNOWFLAKE_ROLE:ACCOUNTADMIN}
 
 server:
   port: 8081

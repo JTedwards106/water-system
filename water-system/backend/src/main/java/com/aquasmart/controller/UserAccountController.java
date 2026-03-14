@@ -46,4 +46,16 @@ public class UserAccountController {
         account.topUp(amount);
         return ResponseEntity.ok(userAccountRepository.save(account));
     }
+
+    @PostMapping("/target")
+    public ResponseEntity<UserAccount> setTarget(@RequestParam String deviceId, @RequestParam BigDecimal amount) {
+        return userAccountRepository.findByDeviceId(deviceId)
+                .map(account -> {
+                    account.setTargetAmount(amount);
+                    // Reset usage if target is updated? For hackathon demo, yes.
+                    account.setCumulativeUsage(BigDecimal.ZERO);
+                    return ResponseEntity.ok(userAccountRepository.save(account));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
 }

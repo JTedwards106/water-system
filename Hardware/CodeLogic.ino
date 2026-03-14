@@ -1,29 +1,25 @@
 /*
-  AquaAudit JA - Smart Water Conservation
-  Hack 26 ESP32 Actual Hardware Firmware
-
-  Hardware Required:
-  - ESP32 Development Board
-  - YF-S201 Water Flow Sensor
-  - 12V Solenoid Valve (driven via MOSFET/Relay)
-  - Power Supply (12V for Valve + step-down to 5V/3.3V for ESP32)
+  AgriFlow - Smart Water Management
+  Hackathon 2026 ESP32 Hardware Firmware
+  (Valve Simulation Mode)
 */
 
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
+#include "secrets.h"
 
 /* ===============================
    Configuration
 =============================== */
-// WiFi Settings
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+// Credentials from secrets.h
+const char* ssid = WIFI_SSID;
+const char* password = WIFI_PASSWORD;
 
 // Backend Settings
 const char* serverUrl = "https://young-hornets-tell.loca.lt/api/v1/water/ingest";
-String deviceId = "home-hw-001"; // Change to your preferred device ID
+String deviceId = AGRIFLOW_DEVICE_ID; 
 
 // Hardware Pins
 const int FLOW_SENSOR_PIN = 14; // YF-S201 (Yellow Signal Wire)
@@ -60,8 +56,10 @@ void IRAM_ATTR pulseCounter() {
 =============================== */
 void setup() {
   Serial.begin(115200);
-  delay(1000); // Allow serial monitor to open
-  Serial.println("\n--- AquaAudit JA ESP32 Hardware Boot ---");
+  delay(1000); 
+  Serial.println("\n--- AgriFlow ESP32 Node Boot ---");
+  Serial.print("Device ID: ");
+  Serial.println(deviceId);
 
   // Initialize Pins
   pinMode(STATUS_LED_PIN, OUTPUT);

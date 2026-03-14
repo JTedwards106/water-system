@@ -1,0 +1,202 @@
+package com.aquasmart.controller;
+
+import com.aquasmart.model.DeviceReading;
+
+import com.aquasmart.repository.DeviceReadingRepository;
+import com.aquasmart.repository.UserAccountRepository;
+import com.aquasmart.service.WaterDataProducer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/v1/water")
+@CrossOrigin(origins = "*")
+public class WaterAnalyticsController {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(WaterAnalyticsController.class);
+
+    private final DeviceReadingRepository repository;
+    private final UserAccountRepository userAccountRepository;
+    private final WaterDataProducer producer;
+    private final ObjectMapper objectMapper;
+    private volatile String lastReceivedData = "No data received yet.";
+
+    // Store pending commands for devices
+    private final Map<String, Map<String, Object>> pendingCommands = new ConcurrentHashMap<>();
+
+    public WaterAnalyticsController(DeviceReadingRepository repository,
+            UserAccountRepository userAccountRepository,
+            WaterDataProducer producer,
+            ObjectMapper objectMapper) {
+        this.repository = repository;
+        this.userAccountRepository = userAccountRepository;
+        this.producer = producer;
+        this.objectMapper = objectMapper;
+    }
+
+    @RequestMapping(value = "/ingest", method = { RequestMethod.GET, RequestMethod.POST })
+    public ResponseEntity<String> ingestData(
+            @RequestBody(required = false) String jsonData,
+            HttpServletRequest request) {
+
+        String method = request.getMethod();
+        log.info("Incoming request: {} /api/v1/water/ingest", method);
+
+        // Log all headers for debugging IoT connectivity
+        String headers = Collections.list(request.getHeaderNames()).stream()
+                .map(h -> h + ": " + request.getHeader(h))
+                .collect(Collectors.joining(", "));
+        log.info("Headers: [{}]", headers);
+
+        if ("GET".equalsIgnoreCase(method)) {
+            // User requested ONLY the data for easy verification
+            return ResponseEntity.ok(lastReceivedData);
+        }
+
+        if (jsonData == null || jsonData.trim().isEmpty()) {
+            log.warn("EMPTY POST BODY RECEIVED");
+            return ResponseEntity.badRequest().body("Error: Empty request body");
+        }
+
+        log.info("RECEIVED RAW DATA: {}", jsonData);
+        lastReceivedData = jsonData;
+
+        try {
+            // Validate JSON before sending to Kafka
+            if (jsonData != null && !jsonData.trim().isEmpty()) {
+                objectMapper.readTree(jsonData);
+                producer.sendMessage(jsonData);
+            }
+
+            // Prepare command response for bidirectional control
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "ok");
+
+            // Extract deviceId from incoming data
+            com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(jsonData);
+            String deviceId = node.has("deviceId") ? node.get("deviceId").asText() : "unknown";
+
+            // --- AUTOMATIC BALANCE ENFORCEMENT ---
+            enforceBalanceLimit(deviceId);
+
+            Map<String, Object> commands = pendingCommands.getOrDefault(deviceId, new HashMap<>());
+            response.put("commands", commands);
+
+            return ResponseEntity.ok(objectMapper.writeValueAsString(response));
+        } catch (Exception e) {
+            log.warn("ERROR PROCESSING REQUEST: {}", e.getMessage());
+            return ResponseEntity.ok("{\"status\":\"error\",\"message\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    @GetMapping("/latest/{deviceId}")
+    public List<DeviceReading> getLatestReadings(@PathVariable String deviceId) {
+        // Return last 20 readings for the dashboard chart
+        return repository.findByDeviceIdOrderByTimestampDesc(deviceId)
+                .stream().limit(20).toList();
+    }
+
+    @GetMapping("/history/{deviceId}")
+    public List<Map<String, Object>> getHistory(@PathVariable String deviceId,
+            @RequestParam(defaultValue = "7") int days) {
+        long since = System.currentTimeMillis() - ((long) days * 24 * 60 * 60 * 1000);
+        List<DeviceReading> readings = repository.findByDeviceIdOrderByTimestampDesc(deviceId)
+                .stream()
+                .filter(r -> r.getTimestamp() != null && r.getTimestamp() >= since)
+                .toList();
+
+        // Group by hour label, summary of stats including supply breakdown
+        java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("EEE HH:mm");
+        Map<String, Map<String, Object>> hourlyStats = new java.util.LinkedHashMap<>();
+
+        for (DeviceReading r : readings) {
+            String hour = fmt.format(new java.util.Date(r.getTimestamp()));
+            Map<String, Object> stats = hourlyStats.computeIfAbsent(hour, k -> {
+                Map<String, Object> s = new HashMap<>();
+                s.put("sumFlow", 0.0);
+                s.put("count", 0);
+                s.put("tankSum", 0.0);
+                s.put("mainSum", 0.0);
+                return s;
+            });
+
+            double flow = (r.getFlowRate() != null) ? r.getFlowRate() : 0.0;
+            stats.put("sumFlow", (double) stats.get("sumFlow") + flow);
+            stats.put("count", (int) stats.get("count") + 1);
+
+            double literContribution = flow * (2.0 / 60.0);
+            if ("MAIN".equalsIgnoreCase(r.getSupplyType())) {
+                stats.put("mainSum", (double) stats.get("mainSum") + literContribution);
+            } else {
+                stats.put("tankSum", (double) stats.get("tankSum") + literContribution);
+            }
+        }
+
+        return hourlyStats.entrySet().stream()
+                .map(e -> {
+                    Map<String, Object> s = e.getValue();
+                    double avgFlow = (int) s.get("count") > 0 ? (double) s.get("sumFlow") / (int) s.get("count") : 0.0;
+                    double tankL = (double) s.get("tankSum");
+                    double mainL = (double) s.get("mainSum");
+                    return Map.<String, Object>of(
+                            "hour", e.getKey(),
+                            "avgFlow", Math.round(avgFlow * 100.0) / 100.0,
+                            "totalL", Math.round((tankL + mainL) * 100.0) / 100.0,
+                            "tankL", Math.round(tankL * 100.0) / 100.0,
+                            "mainL", Math.round(mainL * 100.0) / 100.0);
+                })
+                .limit(48)
+                .toList();
+    }
+
+    @PostMapping("/command")
+    public ResponseEntity<String> setCommand(
+            @RequestParam String deviceId,
+            @RequestParam String command,
+            @RequestParam String value) {
+
+        // Try to parse boolean if it's true/false, otherwise store as string
+        Object parsedValue = value;
+        if ("true".equalsIgnoreCase(value))
+            parsedValue = true;
+        else if ("false".equalsIgnoreCase(value))
+            parsedValue = false;
+
+        pendingCommands.computeIfAbsent(deviceId, k -> new ConcurrentHashMap<>())
+                .put(command, parsedValue);
+
+        log.info("Command SET for {}: {} = {}", deviceId, command, parsedValue);
+        return ResponseEntity.ok("Command scheduled");
+    }
+
+    @PostMapping("/valve")
+    public String toggleValve(@RequestParam String deviceId, @RequestParam boolean open) {
+        setCommand(deviceId, "valveOpen", open ? "true" : "false");
+        return "Valve status for " + deviceId + " set to " + (open ? "OPEN" : "CLOSED");
+    }
+
+    @PostMapping("/leak")
+    public String toggleLeak(@RequestParam String deviceId, @RequestParam boolean active) {
+        setCommand(deviceId, "forcedLeak", active ? "true" : "false");
+        return "Leak simulation for " + deviceId + " set to " + (active ? "ACTIVE" : "OFF");
+    }
+
+    private void enforceBalanceLimit(String deviceId) {
+        userAccountRepository.findByDeviceId(deviceId).ifPresent(account -> {
+            if (account.isValveDisabledByBalance()) {
+                log.warn("ENFORCING SHUTOFF for device {} due to low balance.", deviceId);
+                // Override any manual "open" command with a forced "close"
+                pendingCommands.computeIfAbsent(deviceId, k -> new ConcurrentHashMap<>())
+                        .put("valveOpen", false);
+            }
+        });
+    }
+}

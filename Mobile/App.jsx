@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar, View, ActivityIndicator, Platform } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Droplets, User, CreditCard, Home, Activity as ActivityIcon } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -22,6 +22,8 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function MainTabs({ user, activeMeter, setActiveMeter, meters, onLogout, navigation }) {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -29,8 +31,8 @@ function MainTabs({ user, activeMeter, setActiveMeter, meters, onLogout, navigat
         tabBarStyle: {
           backgroundColor: '#ffffff',
           borderTopWidth: 0,
-          height: Platform.OS === 'ios' ? 92 : 72,
-          paddingBottom: Platform.OS === 'ios' ? 32 : 14,
+          height: 64 + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
           paddingTop: 12,
           elevation: 0,
           borderTopColor: 'transparent',

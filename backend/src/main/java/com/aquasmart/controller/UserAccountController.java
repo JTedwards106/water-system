@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -57,5 +58,57 @@ public class UserAccountController {
                     return ResponseEntity.ok(userAccountRepository.save(account));
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/crop")
+    public ResponseEntity<UserAccount> setCrop(@RequestParam String deviceId, @RequestParam String cropType) {
+        return userAccountRepository.findByDeviceId(deviceId)
+                .map(account -> {
+                    String normCrop = cropType.toUpperCase().trim();
+                    account.setCropType(normCrop);
+                    
+                    // Automatically update target based on crop requirements
+                    BigDecimal target = UserAccount.CROP_REQUIREMENTS.getOrDefault(normCrop, BigDecimal.ZERO);
+                    account.setTargetAmount(target);
+                    
+                    // Reset usage when crop changes for the demo loop
+                    account.setCumulativeUsage(BigDecimal.ZERO);
+                    
+                    return ResponseEntity.ok(userAccountRepository.save(account));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/link")
+    public ResponseEntity<UserAccount> linkDevice(@RequestBody Map<String, String> body) {
+        String deviceId = body.get("deviceId");
+        String premiseId = body.get("premiseId");
+        String ownerName = body.get("ownerName");
+        String cropType = body.get("cropType");
+
+        if (deviceId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        UserAccount account = userAccountRepository.findByDeviceId(deviceId)
+                .map(existing -> {
+                    if (premiseId != null) existing.setPremiseId(premiseId);
+                    if (ownerName != null) existing.setOwnerName(ownerName);
+                    if (cropType != null) existing.setCropType(cropType);
+                    return userAccountRepository.save(existing);
+                })
+                .orElseGet(() -> {
+                    return userAccountRepository.save(UserAccount.builder()
+                            .deviceId(deviceId)
+                            .premiseId(premiseId != null ? premiseId : "AUTO-" + deviceId.toUpperCase())
+                            .ownerName(ownerName != null ? ownerName : "New User")
+                            .cropType(cropType != null ? cropType : "NONE")
+                            .balance(new BigDecimal("250.00"))
+                            .emergencyCreditLimit(new BigDecimal("50.00"))
+                            .targetAmount(new BigDecimal("5.00"))
+                            .build());
+                });
+
+        return ResponseEntity.ok(account);
     }
 }

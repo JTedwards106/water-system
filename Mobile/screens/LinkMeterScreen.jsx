@@ -46,20 +46,21 @@ const LinkMeterScreen = ({ navigation, onLinked, onLogout, isPlural }) => {
             });
 
             if (response.data) {
-                const newMeter = {
-                    deviceId,
-                    premiseId: 'AUTOLINK',
-                    ownerName: 'USER',
-                    cropType: 'New Field'
-                };
+                const newMeter = response.data; // Use actual backend response
 
                 Alert.alert(
                     'System Connected',
-                    'Your AgriFlow Node has been securely verified and linked to your profile.',
+                    `Meter ${deviceId} has been securely verified and linked.`,
                     [{
-                        text: 'Enter Dashboard', onPress: () => {
-                            onLinked(newMeter);
-                            if (isPlural) navigation.goBack();
+                        text: 'Enter Dashboard', onPress: async () => {
+                            await onLinked(newMeter);
+                            // isPlural = true means user is already logged in and adding a new meter.
+                            // We need to explicitly navigate back to MainTabs.
+                            // For the FIRST link (isPlural = false/undefined), React's state swap
+                            // automatically replaces the entire navigator tree — no navigate() needed.
+                            if (isPlural) {
+                                navigation.navigate('MainTabs');
+                            }
                         }
                     }]
                 );

@@ -5,7 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar, View, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Droplets, User, CreditCard, Home } from 'lucide-react-native';
+import { Droplets, User, CreditCard, Home, Activity as ActivityIcon } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import OnboardingScreen from './screens/OnboardingScreen';
@@ -16,7 +16,7 @@ import ProfileScreen from './screens/ProfileScreen';
 import PaymentScreen from './screens/PaymentScreen';
 import LinkMeterScreen from './screens/LinkMeterScreen';
 import UsageScreen from './screens/UsageScreen';
-import { getUser, getToken } from './utils/auth';
+import { getUser, getToken, logout } from './utils/auth';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -40,7 +40,7 @@ function MainTabs({ user, activeMeter, setActiveMeter, meters, onLogout, navigat
         tabBarLabelStyle: { fontSize: 12, fontWeight: '700', marginTop: 4 },
         tabBarIcon: ({ color, size, focused }) => {
           if (route.name === 'Home') return <Home color={color} size={24} strokeWidth={focused ? 2.5 : 2} />;
-          if (route.name === 'Usage') return <Activity color={color} size={24} strokeWidth={focused ? 2.5 : 2} />;
+          if (route.name === 'Usage') return <ActivityIcon color={color} size={24} strokeWidth={focused ? 2.5 : 2} />;
           if (route.name === 'Profile') return <User color={color} size={24} strokeWidth={focused ? 2.5 : 2} />;
         },
       })}
@@ -81,12 +81,25 @@ export default function App() {
             ownerName: savedUser.name,
             cropType: savedUser.cropType || 'Default Field'
           }];
-          await AsyncStorage.setItem('linked_meters', JSON.stringify(parsedMeters));
         }
 
-        setMeters(parsedMeters);
-        if (parsedMeters.length > 0) {
-          setActiveMeter(parsedMeters[0]);
+        // Deduplicate meters by deviceId to prevent key collisions
+        const uniqueMeters = [];
+        const seenIds = new Set();
+        for (const m of parsedMeters) {
+          if (!seenIds.has(m.deviceId)) {
+            uniqueMeters.push(m);
+            seenIds.add(m.deviceId);
+          }
+        }
+
+        if (uniqueMeters.length !== parsedMeters.length) {
+          await AsyncStorage.setItem('linked_meters', JSON.stringify(uniqueMeters));
+        }
+
+        setMeters(uniqueMeters);
+        if (uniqueMeters.length > 0) {
+          setActiveMeter(uniqueMeters[0]);
         }
       }
 
@@ -100,13 +113,26 @@ export default function App() {
     setMeters([]);
     setActiveMeter(null);
     await AsyncStorage.removeItem('linked_meters');
+    await logout();
   };
 
   const handleLinked = async (newMeter) => {
+    // Prevent duplicate device linking - aggressive check
+    const normalizedNewId = newMeter.deviceId.trim().toLowerCase();
+    if (meters.some(m => m.deviceId.trim().toLowerCase() === normalizedNewId)) {
+      // Find the existing meter to set it as active
+      const existing = meters.find(m => m.deviceId.trim().toLowerCase() === normalizedNewId);
+      setActiveMeter(existing);
+      return;
+    }
+
     const updatedMeters = [...meters, newMeter];
-    setMeters(updatedMeters);
+    // Final dedupe just in case
+    const uniqueMeters = Array.from(new Map(updatedMeters.map(m => [m.deviceId.toLowerCase(), m])).values());
+
+    setMeters(uniqueMeters);
     setActiveMeter(newMeter);
-    await AsyncStorage.setItem('linked_meters', JSON.stringify(updatedMeters));
+    await AsyncStorage.setItem('linked_meters', JSON.stringify(uniqueMeters));
 
     // Update user object if it was the first link
     if (!user.deviceId) {
@@ -130,54 +156,43 @@ export default function App() {
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
       <NavigationContainer>
         {user ? (
-          // Authenticated
           (user.deviceId || meters.length > 0) ? (
-            // Linked — bottom tab navigator
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Navigator
+              key={`linked-${meters.length}`}
+              screenOptions={{ headerShown: false }}
+            >
               <Stack.Screen name="MainTabs">
                 {({ navigation }) => <MainTabs user={user} activeMeter={activeMeter} setActiveMeter={setActiveMeter} meters={meters} onLogout={handleLogout} navigation={navigation} />}
               </Stack.Screen>
               <Stack.Screen name="LinkMeter">
-                {({ navigation }) =>
-                  <LinkMeterScreen
-                    navigation={navigation}
-                    onLinked={handleLinked}
-                    onLogout={handleLogout}
-                    isPlural={true}
-                  />}
+                {(props) => <LinkMeterScreen {...props} onLinked={handleLinked} onLogout={handleLogout} isPlural={true} />}
               </Stack.Screen>
             </Stack.Navigator>
           ) : (
-            // Not Linked — Force linking
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="LinkMeter" children={({ navigation }) =>
-                <LinkMeterScreen
-                  navigation={navigation}
-                  onLinked={handleLinked}
-                  onLogout={handleLogout}
-                />}
-              />
-              {/* Allow profile access to logout if stuck */}
-              <Stack.Screen name="Profile" children={({ navigation }) =>
-                <ProfileScreen user={user} meters={meters} onLogout={handleLogout} navigation={navigation} />}
-              />
+            <Stack.Navigator key="not-linked" screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="LinkMeter">
+                {(props) => <LinkMeterScreen {...props} onLinked={handleLinked} onLogout={handleLogout} />}
+              </Stack.Screen>
+              <Stack.Screen name="Profile">
+                {(props) => <ProfileScreen {...props} user={user} meters={meters} onLogout={handleLogout} />}
+              </Stack.Screen>
             </Stack.Navigator>
           )
         ) : (
-          // Unauthenticated — Onboarding / login / register stack
           <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={hasOnboarded ? "Login" : "Onboarding"}>
-            <Stack.Screen name="Onboarding" children={({ navigation }) =>
-              <OnboardingScreen navigation={navigation} onComplete={() => {
-                setHasOnboarded(true);
-                navigation.replace('Login');
-              }} />}
-            />
-            <Stack.Screen name="Login" children={({ navigation }) =>
-              <LoginScreen navigation={navigation} onLogin={(u) => setUser(u)} />}
-            />
-            <Stack.Screen name="Register" children={({ navigation }) =>
-              <RegisterScreen navigation={navigation} onLogin={(u) => setUser(u)} />}
-            />
+            <Stack.Screen name="Onboarding">
+              {({ navigation }) =>
+                <OnboardingScreen navigation={navigation} onComplete={() => {
+                  setHasOnboarded(true);
+                  navigation.replace('Login');
+                }} />}
+            </Stack.Screen>
+            <Stack.Screen name="Login">
+              {({ navigation }) => <LoginScreen navigation={navigation} onLogin={(u) => setUser(u)} />}
+            </Stack.Screen>
+            <Stack.Screen name="Register">
+              {({ navigation }) => <RegisterScreen navigation={navigation} onLogin={(u) => setUser(u)} />}
+            </Stack.Screen>
           </Stack.Navigator>
         )}
       </NavigationContainer>

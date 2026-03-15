@@ -26,9 +26,15 @@ export default function RegisterScreen({ navigation, onLogin }) {
                 password: form.password,
                 phone: form.phone.trim()
             });
-            await storeToken(res.data.token);
-            await storeUser(res.data.user);
-            onLogin(res.data.user);
+            console.log('Registration Response:', res.data);
+
+            if (res.data && res.data.token) {
+                await storeToken(res.data.token);
+                await storeUser(res.data.user);
+                onLogin(res.data.user);
+            } else {
+                throw new Error('No token received from server');
+            }
         } catch (err) {
             console.error('Registration Error:', err);
             let msg = 'Registration failed. Try again.';
@@ -83,10 +89,10 @@ export default function RegisterScreen({ navigation, onLogin }) {
 
                     <TouchableOpacity className="bg-blue-600 rounded-xl py-[18px] flex-row items-center justify-center gap-2 mt-3 shadow-lg shadow-blue-600/30 elevation-md" onPress={handleRegister} disabled={loading}>
                         {loading ? <ActivityIndicator color="#fff" /> : (
-                            <>
-                                <Text className="text-white font-bold text-base">Create Account</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Text className="text-white font-bold text-base mr-2">Create Account</Text>
                                 <ArrowRight color="#fff" size={20} />
-                            </>
+                            </View>
                         )}
                     </TouchableOpacity>
                 </View>

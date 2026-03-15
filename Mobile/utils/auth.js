@@ -3,10 +3,10 @@ import axios from 'axios';
 
 export const BACKEND_URL = 'https://aquasmart-fresh-start.loca.lt';
 
-// Shared Axios instance with tunnel bypass header and 15s timeout
+// Shared Axios instance with tunnel bypass header and 30s timeout
 export const api = axios.create({
     baseURL: BACKEND_URL,
-    timeout: 15000, // 15 seconds
+    timeout: 30000, // 30 seconds
     headers: {
         'bypass-tunnel-reminder': 'true',
         'Content-Type': 'application/json',
@@ -22,8 +22,14 @@ api.interceptors.request.use(async (config) => {
     return config;
 });
 
-export const storeToken = (token) => AsyncStorage.setItem('jwt_token', token);
-export const storeUser = (user) => AsyncStorage.setItem('user', JSON.stringify(user));
+export const storeToken = (token) => {
+    if (token) return AsyncStorage.setItem('jwt_token', token);
+    return Promise.resolve();
+};
+export const storeUser = (user) => {
+    if (user) return AsyncStorage.setItem('user', JSON.stringify(user));
+    return Promise.resolve();
+};
 export const getToken = () => AsyncStorage.getItem('jwt_token');
 export const getUser = async () => {
     const raw = await AsyncStorage.getItem('user');

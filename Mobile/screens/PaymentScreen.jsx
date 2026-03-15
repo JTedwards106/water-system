@@ -99,17 +99,17 @@ export default function PaymentScreen({ user, meters, activeMeter, navigation })
 
                         <View className="flex-row items-center gap-2">
                             {user?.accountType === 'STANDARD' ? (
-                                <>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                     <AlertTriangle color="#f59e0b" size={16} />
-                                    <Text className="text-sm font-bold text-amber-700">Due in 4 days</Text>
-                                </>
+                                    <Text className="text-sm font-bold text-amber-700 ml-2">Due in 4 days</Text>
+                                </View>
                             ) : (
-                                <>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                     {isLow ? <AlertTriangle color="#dc2626" size={16} /> : <Check color="#10b981" size={16} />}
-                                    <Text className={`text-sm font-bold ${isLow ? 'text-red-700' : 'text-emerald-600'}`}>
+                                    <Text className={`text-sm font-bold ml-2 ${isLow ? 'text-red-700' : 'text-emerald-600'}`}>
                                         {isLow ? 'Balance Low: Grace Period Active' : 'Account in Good Standing'}
                                     </Text>
-                                </>
+                                </View>
                             )}
                         </View>
                     </View>
@@ -171,10 +171,10 @@ export default function PaymentScreen({ user, meters, activeMeter, navigation })
                             {loading ? (
                                 <ActivityIndicator color="#fff" />
                             ) : (
-                                <>
-                                    <Text className="text-white font-extrabold text-base">Process Payment</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Text className="text-white font-extrabold text-base mr-2">Process Payment</Text>
                                     <ArrowRight color="#fff" size={20} />
-                                </>
+                                </View>
                             )}
                         </TouchableOpacity>
 

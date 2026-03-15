@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BarChart, LineChart } from 'react-native-chart-kit';
-import { Activity, BarChart3, Calendar, Filter, Droplets, Leaf } from 'lucide-react-native';
+import { Activity as ActivityIcon, BarChart3, Calendar, Filter, Droplets, Leaf } from 'lucide-react-native';
 import { api } from '../utils/auth';
 
 const { width } = Dimensions.get('window');
@@ -20,7 +20,7 @@ export default function UsageScreen({ user, activeMeter, setActiveMeter, meters 
         if (!deviceId) return;
         try {
             const histRes = await api.get(`/api/v1/water/history/${deviceId}?days=${period === '7D' ? 7 : (period === '24H' ? 1 : 30)}`);
-            setHistory(histRes.data || []);
+            setHistory(Array.isArray(histRes.data) ? histRes.data : []);
         } catch (e) {
             console.error('UsageScreen fetch error:', e.message);
         }
@@ -35,8 +35,9 @@ export default function UsageScreen({ user, activeMeter, setActiveMeter, meters 
         fetchUsage().finally(() => setRefreshing(false));
     }, [fetchUsage]);
 
-    const chartLabels = history.slice(-7).map(h => h.hour?.split(' ')[1] || h.hour?.split('-')[2] || '');
-    const chartValues = history.slice(-7).map(h => parseFloat(h.avgFlow) || 0);
+    const safeHistory = Array.isArray(history) ? history : [];
+    const chartLabels = safeHistory.slice(-7).map(h => h.hour?.split(' ')[1] || h.hour?.split('-')[2] || '');
+    const chartValues = safeHistory.slice(-7).map(h => parseFloat(h.avgFlow) || 0);
     const hasChart = chartValues.length > 1;
 
     return (
@@ -131,7 +132,7 @@ export default function UsageScreen({ user, activeMeter, setActiveMeter, meters 
                             />
                         ) : (
                             <View className="h-40 items-center justify-center">
-                                <Activity color="#cbd5e1" size={32} />
+                                <ActivityIcon color="#cbd5e1" size={32} />
                                 <Text className="text-slate-400 font-bold mt-4">Analyzing historical data...</Text>
                             </View>
                         )}
@@ -141,7 +142,7 @@ export default function UsageScreen({ user, activeMeter, setActiveMeter, meters 
                 {/* Detailed List Breakdown */}
                 <View className="px-6">
                     <Text className="text-[20px] font-black text-slate-900 tracking-tight mb-4 ml-2">Recent Intervals</Text>
-                    {history.slice(0, 5).map((h, i) => (
+                    {safeHistory.slice(0, 5).map((h, i) => (
                         <View key={i} className="flex-row items-center justify-between p-5 bg-slate-50 border border-slate-100 rounded-3xl mb-3">
                             <View className="flex-row items-center gap-4">
                                 <View className="w-10 h-10 rounded-xl bg-white items-center justify-center shadow-sm">

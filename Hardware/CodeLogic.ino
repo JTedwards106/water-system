@@ -21,7 +21,7 @@ const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASSWORD;
 
 // Backend Settings (Update with your localtunnel URL)
-const char* serverUrl = "https://aquasmart-fresh-start.loca.lt/api/v1/water/ingest";
+const char* serverUrl = "https://agriflow-pro-2026.loca.lt/api/v1/water/ingest";
 String deviceId = AGRIFLOW_DEVICE_ID; 
 
 // Hardware Pins (Check WIRING.md)

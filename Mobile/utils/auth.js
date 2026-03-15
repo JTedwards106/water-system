@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-export const BACKEND_URL = 'https://aquasmart-fresh-start.loca.lt';
+export const BACKEND_URL = 'https://agriflow-pro-2026.loca.lt';
 
 // Shared Axios instance with tunnel bypass header and 30s timeout
 export const api = axios.create({

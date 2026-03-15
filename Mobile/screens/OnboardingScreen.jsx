@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
 import {
     View, Text, Animated, StyleSheet,
-    TouchableOpacity, Dimensions, SafeAreaView,
+    TouchableOpacity, Dimensions,
     StatusBar, Image
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Droplets, AlertTriangle, Zap, ChevronRight } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 

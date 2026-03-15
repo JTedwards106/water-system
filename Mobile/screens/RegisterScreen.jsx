@@ -4,6 +4,7 @@ import {
     Alert, KeyboardAvoidingView,
     Platform, ScrollView, ActivityIndicator, Image
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Droplets, ArrowRight } from 'lucide-react-native';
 import { api, storeToken, storeUser } from '../utils/auth';
 
@@ -52,60 +53,62 @@ export default function RegisterScreen({ navigation, onLogin }) {
     };
 
     return (
-        <KeyboardAvoidingView className="flex-1 bg-white" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 32, paddingTop: 60, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        <SafeAreaView className="flex-1 bg-white">
+            <KeyboardAvoidingView className="flex-1 bg-white" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 32, paddingTop: 60, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
 
-                {/* Header */}
-                <View className="mb-9">
-                    <View className="w-16 h-16 rounded-2xl bg-white items-center justify-center mb-5 shadow-sm overflow-hidden">
-                        <Image source={require('../assets/water-logo.png')} className="w-full h-full" resizeMode="contain" />
-                    </View>
-                    <Text className="text-[28px] font-extrabold text-slate-800 mb-2.5 tracking-tight">Create Account</Text>
-                    <Text className="text-sm text-slate-500 font-medium leading-[22px]">Join AgriFlow and manage your water usage intelligently.</Text>
-                </View>
-
-                {/* Form */}
-                <View className="flex-1">
-                    {[
-                        { key: 'name', label: 'Full Name', placeholder: 'Jane Smith', keyboard: 'default' },
-                        { key: 'email', label: 'Email Address', placeholder: 'you@example.com', keyboard: 'email-address' },
-                        { key: 'password', label: 'Password', placeholder: '••••••••', keyboard: 'default', secure: true },
-                        { key: 'phone', label: 'Phone Number', placeholder: '+1 876 XXX XXXX', keyboard: 'phone-pad' },
-                    ].map(({ key, label, placeholder, keyboard, secure }) => (
-                        <View className="mb-4" key={key}>
-                            <Text className="text-[13px] font-bold text-slate-700 mb-2">{label}</Text>
-                            <TextInput
-                                className="bg-white rounded-xl px-4 py-3.5 text-[15px] text-slate-800 border border-slate-300"
-                                placeholder={placeholder}
-                                placeholderTextColor="#94a3b8"
-                                value={form[key]}
-                                onChangeText={set(key)}
-                                keyboardType={keyboard}
-                                autoCapitalize="none"
-                                secureTextEntry={!!secure}
-                            />
+                    {/* Header */}
+                    <View className="mb-9">
+                        <View className="w-16 h-16 rounded-2xl bg-white items-center justify-center mb-5 shadow-sm overflow-hidden">
+                            <Image source={require('../assets/water-logo.png')} className="w-full h-full" resizeMode="contain" />
                         </View>
-                    ))}
+                        <Text className="text-[28px] font-extrabold text-slate-800 mb-2.5 tracking-tight">Create Account</Text>
+                        <Text className="text-sm text-slate-500 font-medium leading-[22px]">Join AgriFlow and manage your water usage intelligently.</Text>
+                    </View>
 
-                    <TouchableOpacity className="bg-blue-600 rounded-xl py-[18px] flex-row items-center justify-center gap-2 mt-3 shadow-lg shadow-blue-600/30 elevation-md" onPress={handleRegister} disabled={loading}>
-                        {loading ? <ActivityIndicator color="#fff" /> : (
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Text className="text-white font-bold text-base mr-2">Create Account</Text>
-                                <ArrowRight color="#fff" size={20} />
+                    {/* Form */}
+                    <View className="flex-1">
+                        {[
+                            { key: 'name', label: 'Full Name', placeholder: 'Jane Smith', keyboard: 'default' },
+                            { key: 'email', label: 'Email Address', placeholder: 'you@example.com', keyboard: 'email-address' },
+                            { key: 'password', label: 'Password', placeholder: '••••••••', keyboard: 'default', secure: true },
+                            { key: 'phone', label: 'Phone Number', placeholder: '+1 876 XXX XXXX', keyboard: 'phone-pad' },
+                        ].map(({ key, label, placeholder, keyboard, secure }) => (
+                            <View className="mb-4" key={key}>
+                                <Text className="text-[13px] font-bold text-slate-700 mb-2">{label}</Text>
+                                <TextInput
+                                    className="bg-white rounded-xl px-4 py-3.5 text-[15px] text-slate-800 border border-slate-300"
+                                    placeholder={placeholder}
+                                    placeholderTextColor="#94a3b8"
+                                    value={form[key]}
+                                    onChangeText={set(key)}
+                                    keyboardType={keyboard}
+                                    autoCapitalize="none"
+                                    secureTextEntry={!!secure}
+                                />
                             </View>
-                        )}
-                    </TouchableOpacity>
-                </View>
+                        ))}
 
-                {/* Footer */}
-                <View className="flex-row justify-center items-center mt-8">
-                    <Text className="text-slate-500 text-sm font-medium">Already have an account?</Text>
-                    <TouchableOpacity onPress={() => navigation.goBack()}>
-                        <Text className="text-blue-600 text-sm font-bold ml-1"> Sign In</Text>
-                    </TouchableOpacity>
-                </View>
+                        <TouchableOpacity className="bg-blue-600 rounded-xl py-[18px] flex-row items-center justify-center gap-2 mt-3 shadow-lg shadow-blue-600/30 elevation-md" onPress={handleRegister} disabled={loading}>
+                            {loading ? <ActivityIndicator color="#fff" /> : (
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Text className="text-white font-bold text-base mr-2">Create Account</Text>
+                                    <ArrowRight color="#fff" size={20} />
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    </View>
 
-            </ScrollView>
-        </KeyboardAvoidingView>
+                    {/* Footer */}
+                    <View className="flex-row justify-center items-center mt-8">
+                        <Text className="text-slate-500 text-sm font-medium">Already have an account?</Text>
+                        <TouchableOpacity onPress={() => navigation.goBack()}>
+                            <Text className="text-blue-600 text-sm font-bold ml-1"> Sign In</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView >
     );
 }

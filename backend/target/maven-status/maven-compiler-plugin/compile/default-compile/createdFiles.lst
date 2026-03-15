@@ -20,6 +20,7 @@ com\aquasmart\model\User.class
 com\aquasmart\controller\AuthController.class
 com\aquasmart\model\DeviceReading.class
 com\aquasmart\service\AIService.class
+com\aquasmart\controller\UserController.class
 com\aquasmart\config\SecurityConfig.class
 com\aquasmart\config\GlobalExceptionHandler.class
 com\aquasmart\model\User$Builder.class

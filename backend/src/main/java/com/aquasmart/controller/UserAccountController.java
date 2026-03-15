@@ -79,7 +79,7 @@ public class UserAccountController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping("/link")
+    @PostMapping("/link-device")
     public ResponseEntity<UserAccount> linkDevice(@RequestBody Map<String, String> body) {
         String deviceId = body.get("deviceId");
         String premiseId = body.get("premiseId");

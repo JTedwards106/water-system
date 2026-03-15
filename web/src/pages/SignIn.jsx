@@ -1,6 +1,7 @@
 // pages/SignIn.jsx
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { authAPI } from '../services/api';
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -8,20 +9,30 @@ export default function SignIn() {
     email: '',
     password: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    setError(''); // Clear error when user types
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle sign in logic here
-    console.log('Sign in:', formData);
-    // Navigate to dashboard after successful sign in
-    navigate('/dashboard');
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await authAPI.login(formData.email, formData.password);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -73,11 +84,18 @@ export default function SignIn() {
           <div>
             <button
               type="submit"
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              disabled={isLoading}
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign in
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
+
+          {error && (
+            <div className="rounded-md bg-red-50 p-4">
+              <div className="text-sm text-red-700">{error}</div>
+            </div>
+          )}
 
           <div className="text-center">
             <p className="text-sm text-slate-600">

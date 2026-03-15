@@ -48,62 +48,62 @@ public class WaterDataConsumer {
         this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(topics = "water-sensor-data", groupId = "aquasmart-group")
-    public void consume(String message) {
-        log.info("=== KAFKA MESSAGE RECEIVED ===");
-        log.info("Raw: {}", message);
-        try {
-            DeviceReading reading = objectMapper.readValue(message, DeviceReading.class);
+    // @KafkaListener(topics = "water-sensor-data", groupId = "aquasmart-group")
+    // public void consume(String message) {
+    //     log.info("=== KAFKA MESSAGE RECEIVED ===");
+    //     log.info("Raw: {}", message);
+    //     try {
+    //         DeviceReading reading = objectMapper.readValue(message, DeviceReading.class);
 
-            log.info("Parsed: deviceId={}, flowRate={}, tankLevel={}, supply={}, valve={}, leak={}",
-                    reading.getDeviceId(), reading.getFlowRate(), reading.getTankLevel(),
-                    reading.getSupplyType(), reading.getValveOpen(), reading.getLeakDetected());
+    //         log.info("Parsed: deviceId={}, flowRate={}, tankLevel={}, supply={}, valve={}, leak={}",
+    //                 reading.getDeviceId(), reading.getFlowRate(), reading.getTankLevel(),
+    //                 reading.getSupplyType(), reading.getValveOpen(), reading.getLeakDetected());
 
-            // Guard: deviceId is NOT NULL in DB - skip malformed messages
-            if (reading.getDeviceId() == null || reading.getDeviceId().isBlank()) {
-                log.error("SKIPPING: deviceId is null or blank in message: {}", message);
-                return;
-            }
+    //         // Guard: deviceId is NOT NULL in DB - skip malformed messages
+    //         if (reading.getDeviceId() == null || reading.getDeviceId().isBlank()) {
+    //             log.error("SKIPPING: deviceId is null or blank in message: {}", message);
+    //             return;
+    //         }
 
-            DeviceReading saved = repository.save(reading);
-            log.info("SAVED TO DB: id={}, deviceId={}, flowRate={}, tankLevel={}",
-                    saved.getId(), saved.getDeviceId(), saved.getFlowRate(), saved.getTankLevel());
+    //         DeviceReading saved = repository.save(reading);
+    //         log.info("SAVED TO DB: id={}, deviceId={}, flowRate={}, tankLevel={}",
+    //                 saved.getId(), saved.getDeviceId(), saved.getFlowRate(), saved.getTankLevel());
 
-            // --- SNOWFLAKE SINK (Skipped for MVP) ---
-            // snowflakeService.sinkReading(reading);
+    //         // --- SNOWFLAKE SINK (Skipped for MVP) ---
+    //         // snowflakeService.sinkReading(reading);
 
-            // --- AI PREDICTION LOOP ---
-            if (aiService.shouldShutOff(reading)) {
-                log.info("AI Triggered SHUTOFF for device {}", reading.getDeviceId());
-                // Queue the command for the next poll
-                commandService.setCommand(reading.getDeviceId(), "valveOpen", false);
+    //         // --- AI PREDICTION LOOP ---
+    //         if (aiService.shouldShutOff(reading)) {
+    //             log.info("AI Triggered SHUTOFF for device {}", reading.getDeviceId());
+    //             // Queue the command for the next poll
+    //             commandService.setCommand(reading.getDeviceId(), "valveOpen", false);
                 
-                // Safe JSON construction for Kafka notification
-                try {
-                    Map<String, Object> aiAlert = new java.util.HashMap<>();
-                    aiAlert.put("deviceId", reading.getDeviceId());
-                    aiAlert.put("command", "valveOpen");
-                    aiAlert.put("value", false);
-                    aiAlert.put("source", "AI");
-                    producer.sendMessage(objectMapper.writeValueAsString(aiAlert));
-                } catch (Exception e) {
-                    log.error("Failed to send AI shutoff notification: {}", e.getMessage());
-                }
-            }
+    //             // Safe JSON construction for Kafka notification
+    //             try {
+    //                 Map<String, Object> aiAlert = new java.util.HashMap<>();
+    //                 aiAlert.put("deviceId", reading.getDeviceId());
+    //                 aiAlert.put("command", "valveOpen");
+    //                 aiAlert.put("value", false);
+    //                 aiAlert.put("source", "AI");
+    //                 producer.sendMessage(objectMapper.writeValueAsString(aiAlert));
+    //             } catch (Exception e) {
+    //                 log.error("Failed to send AI shutoff notification: {}", e.getMessage());
+    //             }
+    //         }
 
-            // --- PAY-AS-YOU-GO DEPLEPTION LOGIC ---
-            processBilling(reading);
+    //         // --- PAY-AS-YOU-GO DEPLEPTION LOGIC ---
+    //         processBilling(reading);
 
-            if (Boolean.TRUE.equals(reading.getLeakDetected())) {
-                log.warn("ALERT: Leak detected for device {}", reading.getDeviceId());
-            }
-        } catch (Exception e) {
-            log.error("FAILED to process Kafka message. Raw message was: [{}]", message);
-            log.error("Exception type: {}", e.getClass().getName());
-            log.error("Exception message: {}", e.getMessage());
-            log.error("Full stack trace:", e);
-        }
-    }
+    //         if (Boolean.TRUE.equals(reading.getLeakDetected())) {
+    //             log.warn("ALERT: Leak detected for device {}", reading.getDeviceId());
+    //         }
+    //     } catch (Exception e) {
+    //         log.error("FAILED to process Kafka message. Raw message was: [{}]", message);
+    //         log.error("Exception type: {}", e.getClass().getName());
+    //         log.error("Exception message: {}", e.getMessage());
+    //         log.error("Full stack trace:", e);
+    //     }
+    // }
 
     private void processBilling(DeviceReading reading) {
         Optional<UserAccount> accountOpt = userAccountRepository.findByDeviceId(reading.getDeviceId());
@@ -159,7 +159,7 @@ public class WaterDataConsumer {
                     targetReachedAlert.put("deviceId", account.getDeviceId());
                     targetReachedAlert.put("status", "TARGET_REACHED");
                     targetReachedAlert.put("usage", account.getCumulativeUsage());
-                    producer.sendMessage(objectMapper.writeValueAsString(targetReachedAlert));
+                    // producer.sendMessage(objectMapper.writeValueAsString(targetReachedAlert));
                 } catch (Exception e) {
                     log.error("Failed to send target reached notification: {}", e.getMessage());
                 }

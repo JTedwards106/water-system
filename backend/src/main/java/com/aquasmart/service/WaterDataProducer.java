@@ -17,8 +17,8 @@ public class WaterDataProducer {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public void sendMessage(String message) {
-        log.info("Producing message to Kafka: {}", message);
-        this.kafkaTemplate.send(TOPIC, message);
-    }
+    // public void sendMessage(String message) {
+    //     log.info("Producing message to Kafka: {}", message);
+    //     this.kafkaTemplate.send(TOPIC, message);
+    // }
 }

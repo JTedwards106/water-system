@@ -2,22 +2,25 @@ spring:
   application:
     name: aquasmart-backend
   datasource:
-    url: jdbc:postgresql://localhost:5433/aquasmart
-    username: postgres
-    password: password
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:h2:mem:aquasmart
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: update
     show-sql: true
-  kafka:
-    bootstrap-servers: localhost:9092
-    consumer:
-      group-id: aquasmart-group
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  h2:
+    console:
+      enabled: true
+  # kafka:
+  #   bootstrap-servers: localhost:9092
+  #   consumer:
+  #     group-id: aquasmart-group
+  #     auto-offset-reset: earliest
+  #     key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  #     value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
   snowflake:
     url: ${SNOWFLAKE_URL:jdbc:snowflake://account.snowflakecomputing.com}
     user: ${SNOWFLAKE_USER:user}

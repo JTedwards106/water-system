@@ -1,12 +1,41 @@
 <!doctype html>
-<html lang="en">
+<html class="h-full bg-slate-50" lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image" href="/water-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>water-system</title>
+    <title>Smart Farm Water Monitoring</title>
+    <!-- BEGIN: Tailwind CSS & Config -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#0ea5e9', // Sky 500
+              secondary: '#0d9488', // Teal 600
+            }
+          }
+        }
+      }
+    </script>
+    <!-- END: Tailwind CSS & Config -->
+    <!-- BEGIN: Custom Styles -->
+    <style data-purpose="layout-refinements">
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+      }
+    </style>
+    <!-- END: Custom Styles -->
   </head>
-  <body>
+  <body class="h-full font-sans text-slate-900 antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

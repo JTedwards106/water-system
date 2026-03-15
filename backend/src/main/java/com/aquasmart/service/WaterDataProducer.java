@@ -19,6 +19,7 @@ public class WaterDataProducer {
 
     public void sendMessage(String message) {
         log.info("Producing message to Kafka: {}", message);
-        this.kafkaTemplate.send(TOPIC, message);
+        // this.kafkaTemplate.send(TOPIC, message);
+        log.info("KAFKA BYPASS: Message logged but not sent to Kafka");
     }
 }

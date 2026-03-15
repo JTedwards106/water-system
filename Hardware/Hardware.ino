@@ -1,13 +1,16 @@
 /*
   AgriFlow - Smart Water Management
   Hackathon 2026 ESP32 Hardware Firmware
-  (Valve Simulation Mode with LED Indicators & Remote Switch)
+  (Valve Simulation Mode with Consolidated Orange LED)
 */
 
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 
 /* ===============================
-   Configuration (Update for your WiFi)
+   Configuration
 =============================== */
 // WiFi Credentials
 #define WIFI_SSID "AI Hackathon"
@@ -16,20 +19,15 @@
 // Device Identity
 #define AGRIFLOW_DEVICE_ID "agriflow-node-001"
 
-// Credentials mapping
-const char* ssid = WIFI_SSID;
-const char* password = WIFI_PASSWORD;
-
-// Backend Settings (Update with your localtunnel URL)
+// Backend Settings
 const char* serverUrl = "https://aquasmart-fresh-start.loca.lt/api/v1/water/ingest";
-String deviceId = AGRIFLOW_DEVICE_ID; 
+String deviceId = "AGRIFLOW_001";
 
-// Hardware Pins (Check WIRING.md)
+// Hardware Pins
 const int FLOW_SENSOR_PIN = 23; // YF-S201 (Yellow Signal Wire)
 const int GREEN_LED_PIN   = 11; // Internet status
-const int ORANGE_LED_PIN  = 10; // Valve / leakage indicator
+const int ORANGE_LED_PIN  = 10; // Valve / leakage / remote light indicator
 const int BLUE_LED_PIN    = 6;  // Flow indicator
-const int LIGHT_PIN       = 4;  // Indicator LED / Switch
 
 // Timer intervals
 const unsigned long SYNC_INTERVAL_MS = 2000;
@@ -47,7 +45,7 @@ unsigned long lastFlowCalcTime = 0;
 bool valveOpen = true;
 bool leakDetected = false;
 bool forcedLeak = false;
-bool lightOn = false;
+bool lightOn = false;        // Managed via remote "lightOn" command
 String supplyType = "MAIN";
 
 // LED timing
@@ -62,15 +60,18 @@ const unsigned long GREEN_BLINK_INTERVAL = 1000;
 volatile unsigned long lastPulseISR = 0;
 
 /* ===============================
-   Helper: Apply valve state to Orange LED immediately
-   - Valve OPEN  → Orange LED OFF
-   - Valve CLOSED → Orange LED ON (steady; blink handled in loop if leak)
+   Helper: Apply states to Orange LED
+   - Logic: ON if valve is CLOSED OR if lightOn is TRUE
 =============================== */
-void applyValveToLED() {
-  if (valveOpen) {
-    digitalWrite(ORANGE_LED_PIN, LOW);  // Valve open → orange OFF
+void updateOrangeLED() {
+  bool shouldBeOn = (!valveOpen || lightOn);
+  
+  if (!shouldBeOn) {
+    digitalWrite(ORANGE_LED_PIN, LOW);
+  } else if (leakDetected) {
+    // Blink logic is handled in loop()
   } else {
-    digitalWrite(ORANGE_LED_PIN, HIGH); // Valve closed → orange ON
+    digitalWrite(ORANGE_LED_PIN, HIGH);
   }
 }
 
@@ -101,12 +102,10 @@ void setup() {
   pinMode(GREEN_LED_PIN, OUTPUT);
   pinMode(ORANGE_LED_PIN, OUTPUT);
   pinMode(BLUE_LED_PIN, OUTPUT);
-  pinMode(LIGHT_PIN, OUTPUT);
   pinMode(FLOW_SENSOR_PIN, INPUT_PULLUP);
 
   // Set initial states
-  applyValveToLED(); // Orange OFF on boot (valve open by default)
-  digitalWrite(LIGHT_PIN, lightOn ? HIGH : LOW);
+  updateOrangeLED();
 
   // Attach Flow Sensor Interrupt (permanent)
   attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_PIN), pulseCounter, FALLING);
@@ -115,8 +114,12 @@ void setup() {
   Serial.print("[WIFI] Connecting to ");
   Serial.println(WIFI_SSID);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
     digitalWrite(GREEN_LED_PIN, LOW);
   }
+
   Serial.println("\n[WIFI] Connected!");
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
@@ -154,21 +157,19 @@ void loop() {
     digitalWrite(BLUE_LED_PIN, LOW);
   }
 
-  // Orange LED:
-  //   Valve OPEN         → OFF
-  //   Valve CLOSED + OK  → Steady ON
-  //   Valve CLOSED + LEAK→ Fast blink
-  if (!valveOpen) {
+  // Orange LED: Valve/Light Logic
+  bool activeState = (!valveOpen || lightOn);
+  if (activeState) {
     if (leakDetected) {
       if ((millis() - lastLeakBlinkTime) >= LEAK_BLINK_INTERVAL) {
         digitalWrite(ORANGE_LED_PIN, !digitalRead(ORANGE_LED_PIN));
         lastLeakBlinkTime = millis();
       }
     } else {
-      digitalWrite(ORANGE_LED_PIN, HIGH); // Steady ON: valve closed, no leak
+      digitalWrite(ORANGE_LED_PIN, HIGH);
     }
   } else {
-    digitalWrite(ORANGE_LED_PIN, LOW); // Valve open: orange OFF
+    digitalWrite(ORANGE_LED_PIN, LOW);
   }
 
   // Green LED: blink when connected, OFF when disconnected
@@ -194,30 +195,10 @@ void loop() {
 
 /* ===============================
    Network Communication
-   
-   SENDS:
-   {
-     "deviceId": "AGRIFLOW_001",
-     "flowRate": 5.5,
-     "tankLevel": -1,
-     "supplyType": "MAIN",
-     "valveOpen": true,
-     "leakDetected": false
-   }
-
-   RECEIVES:
-   {
-     "status": "ok",
-     "commands": {
-       "valveOpen": false,   // optional
-       "lightOn": true,      // optional
-       "forcedLeak": false   // optional
-     }
-   }
 =============================== */
 void sendDataAndReceiveCommands() {
   WiFiClientSecure client;
-  client.setInsecure(); // Dev mode: bypass SSL cert check for localtunnel
+  client.setInsecure();
 
   HTTPClient http;
 
@@ -226,9 +207,8 @@ void sendDataAndReceiveCommands() {
 
   if (http.begin(client, serverUrl)) {
     http.addHeader("Content-Type", "application/json");
-    http.addHeader("Bypass-Tunnel-Reminder", "true"); // Required for localtunnel
+    http.addHeader("Bypass-Tunnel-Reminder", "true");
 
-    // Build outgoing sensor payload
     StaticJsonDocument<256> doc;
     doc["deviceId"]     = deviceId;
     doc["flowRate"]     = flowRateLPM;
@@ -246,7 +226,6 @@ void sendDataAndReceiveCommands() {
       Serial.println("[HTTP 200] Sync OK.");
       String response = http.getString();
 
-      // Parse commands from backend response
       StaticJsonDocument<512> resDoc;
       DeserializationError error = deserializeJson(resDoc, response);
 
@@ -254,30 +233,28 @@ void sendDataAndReceiveCommands() {
         JsonObject cmds = resDoc["commands"];
 
         // --- Valve Control ---
-        // Turns orange LED OFF if valve opens, ON if valve closes
         if (cmds.containsKey("valveOpen")) {
           bool targetValve = cmds["valveOpen"];
           if (targetValve != valveOpen) {
             valveOpen = targetValve;
-            applyValveToLED(); // Immediate orange LED update on remote command
+            updateOrangeLED();
             Serial.print("[CMD] Valve state changed: ");
             Serial.println(valveOpen ? "OPEN" : "CLOSED");
           }
         }
 
         // --- Light / Remote Switch Control ---
-        // Controls LIGHT_PIN (GPIO 4) - connect your LED or relay here
+        // Now targeting the Orange LED
         if (cmds.containsKey("lightOn")) {
           bool targetLight = cmds["lightOn"];
           if (targetLight != lightOn) {
             lightOn = targetLight;
-            digitalWrite(LIGHT_PIN, lightOn ? HIGH : LOW);
-            Serial.print("[CMD] Light/Switch Remote ");
+            updateOrangeLED();
+            Serial.print("[CMD] Orange LED (Remote Light) ");
             Serial.println(lightOn ? "ON" : "OFF");
           }
         }
 
-        // --- Forced Leak Simulation (demo only) ---
         if (cmds.containsKey("forcedLeak")) {
           forcedLeak = cmds["forcedLeak"];
         }
@@ -285,7 +262,6 @@ void sendDataAndReceiveCommands() {
     } else {
       Serial.print("[HTTP ERROR] Code: ");
       Serial.println(httpResponseCode);
-      Serial.println(http.getString());
     }
     http.end();
   } else {

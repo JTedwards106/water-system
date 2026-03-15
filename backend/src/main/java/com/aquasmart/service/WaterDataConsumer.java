@@ -48,7 +48,7 @@ public class WaterDataConsumer {
         this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(topics = "water-sensor-data", groupId = "aquasmart-group")
+    // @KafkaListener(topics = "water-sensor-data", groupId = "aquasmart-group")
     public void consume(String message) {
         log.info("=== KAFKA MESSAGE RECEIVED ===");
         log.info("Raw: {}", message);
@@ -77,7 +77,7 @@ public class WaterDataConsumer {
                 log.info("AI Triggered SHUTOFF for device {}", reading.getDeviceId());
                 // Queue the command for the next poll
                 commandService.setCommand(reading.getDeviceId(), "valveOpen", false);
-                
+
                 // Safe JSON construction for Kafka notification
                 try {
                     Map<String, Object> aiAlert = new java.util.HashMap<>();

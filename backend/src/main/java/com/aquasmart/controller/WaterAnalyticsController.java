@@ -5,6 +5,7 @@ import com.aquasmart.model.DeviceReading;
 import com.aquasmart.repository.DeviceReadingRepository;
 import com.aquasmart.repository.UserAccountRepository;
 import com.aquasmart.service.WaterDataProducer;
+import com.aquasmart.service.WaterDataConsumer;
 import com.aquasmart.service.CommandService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +29,7 @@ public class WaterAnalyticsController {
     private final DeviceReadingRepository repository;
     private final UserAccountRepository userAccountRepository;
     private final WaterDataProducer producer;
+    private final WaterDataConsumer consumer;
     private final CommandService commandService;
     private final ObjectMapper objectMapper;
     private volatile String lastReceivedData = "No data received yet.";
@@ -35,11 +37,13 @@ public class WaterAnalyticsController {
     public WaterAnalyticsController(DeviceReadingRepository repository,
             UserAccountRepository userAccountRepository,
             WaterDataProducer producer,
+            WaterDataConsumer consumer,
             CommandService commandService,
             ObjectMapper objectMapper) {
         this.repository = repository;
         this.userAccountRepository = userAccountRepository;
         this.producer = producer;
+        this.consumer = consumer;
         this.commandService = commandService;
         this.objectMapper = objectMapper;
     }
@@ -75,6 +79,12 @@ public class WaterAnalyticsController {
             // Validate JSON before sending to Kafka
             if (jsonData != null && !jsonData.trim().isEmpty()) {
                 objectMapper.readTree(jsonData);
+
+                // --- KAFKA BYPASS: Direct Processing ---
+                log.info("BYPASSING KAFKA: Sending directly to consumer");
+                consumer.consume(jsonData);
+
+                // Still log via producer for consistency
                 producer.sendMessage(jsonData);
             }
 
@@ -208,7 +218,7 @@ public class WaterAnalyticsController {
                 log.warn("ENFORCING SHUTOFF for device {} due to low balance.", deviceId);
                 commandService.setCommand(deviceId, "valveOpen", false);
             }
-            
+
             // 2. Target Reach Check (Ensures zero-latency shutoff even if Kafka is slow)
             if (account.isTargetReached()) {
                 log.warn("ENFORCING SHUTOFF for device {} due to water target reached.", deviceId);

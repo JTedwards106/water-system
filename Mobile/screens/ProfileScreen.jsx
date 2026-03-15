@@ -4,7 +4,7 @@ import {
     TouchableOpacity, Alert, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User as UserIcon, Phone, Mail, Cpu, LogOut, Wallet, ShieldCheck, ChevronRight, Leaf, Zap, HelpCircle } from 'lucide-react-native';
+import { User as UserIcon, Phone, Mail, Cpu, LogOut, Wallet, ShieldCheck, ChevronRight, Leaf, Zap, HelpCircle, Plus } from 'lucide-react-native';
 import { api, logout } from '../utils/auth';
 
 export default function ProfileScreen({ user, meters, onLogout, navigation }) {

@@ -21,9 +21,15 @@ export default function LoginScreen({ navigation, onLogin }) {
         setLoading(true);
         try {
             const res = await api.post('/api/auth/login', { email: email.trim(), password });
-            await storeToken(res.data.token);
-            await storeUser(res.data.user);
-            onLogin(res.data.user);
+            console.log('Login Response:', res.data);
+            
+            if (res.data && res.data.token) {
+                await storeToken(res.data.token);
+                await storeUser(res.data.user);
+                onLogin(res.data.user);
+            } else {
+                throw new Error('No token received from server');
+            }
         } catch (err) {
             console.error('Login Error:', err);
             let msg = 'Login failed. Check your credentials.';
@@ -82,10 +88,10 @@ export default function LoginScreen({ navigation, onLogin }) {
 
                     <TouchableOpacity className="bg-blue-600 rounded-xl py-[18px] flex-row items-center justify-center gap-2 mt-3 shadow-lg shadow-blue-600/30 elevation-md" onPress={handleLogin} disabled={loading}>
                         {loading ? <ActivityIndicator color="#fff" /> : (
-                            <>
-                                <Text className="text-white font-bold text-base">Sign In</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Text className="text-white font-bold text-base mr-2">Sign In</Text>
                                 <ArrowRight color="#fff" size={20} />
-                            </>
+                            </View>
                         )}
                     </TouchableOpacity>
                 </View>

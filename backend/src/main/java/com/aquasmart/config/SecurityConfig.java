@@ -38,7 +38,7 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/v1/water/latest/**", "/api/v1/water/history/**").permitAll()
+                        .requestMatchers("/api/v1/water/latest/**", "/api/v1/water/history/**", "/api/v1/water/valve/**", "/api/v1/water/command/**", "/api/v1/water/light/**").permitAll()
                         .requestMatchers("/api/v1/user/**").permitAll()
                         // Everything else requires JWT
                         .anyRequest().authenticated())

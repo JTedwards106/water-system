@@ -39,8 +39,8 @@ export default function Header() {
       <div className="flex items-center space-x-4">
         <img src="/water-logo.png" alt="Smart Farm Water Monitoring Logo" className="h-10 w-10 object-contain" />
         <div>
-          <h1 className="text-xl font-bold text-slate-900 leading-tight">Smart Farm Water Monitoring</h1>
-          <p className="text-sm text-slate-500">Real-time irrigation analytics</p>
+          <h1 className="text-xl font-bold text-slate-900 leading-tight">AgriFlow</h1>
+          <p className="text-sm text-slate-500">Real-time Water Monitoring</p>
         </div>
       </div>
       <div className="flex items-center space-x-4">

@@ -3,5 +3,5 @@
 - **Mobile App**: `npm start` (or `npx expo start --tunnel`)
 - **Backend Server**: `./mvnw spring-boot:run`
 - **Hardware Code**: Open `Hardware/CodeLogic.ino` in Arduino IDE
-- **Public Tunnel**: `lt --port 3000 --subdomain aquasmart-fresh-start`
+- **Public Tunnel**: `npx localtunnel --port 8085 --subdomain aquasmart-fresh-start`
 

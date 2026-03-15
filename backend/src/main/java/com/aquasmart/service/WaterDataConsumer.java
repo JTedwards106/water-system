@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -77,12 +79,16 @@ public class WaterDataConsumer {
                 commandService.setCommand(reading.getDeviceId(), "valveOpen", false);
                 
                 // Safe JSON construction for Kafka notification
-                Map<String, Object> aiAlert = new java.util.HashMap<>();
-                aiAlert.put("deviceId", reading.getDeviceId());
-                aiAlert.put("command", "valveOpen");
-                aiAlert.put("value", false);
-                aiAlert.put("source", "AI");
-                producer.sendMessage(objectMapper.writeValueAsString(aiAlert));
+                try {
+                    Map<String, Object> aiAlert = new java.util.HashMap<>();
+                    aiAlert.put("deviceId", reading.getDeviceId());
+                    aiAlert.put("command", "valveOpen");
+                    aiAlert.put("value", false);
+                    aiAlert.put("source", "AI");
+                    producer.sendMessage(objectMapper.writeValueAsString(aiAlert));
+                } catch (Exception e) {
+                    log.error("Failed to send AI shutoff notification: {}", e.getMessage());
+                }
             }
 
             // --- PAY-AS-YOU-GO DEPLEPTION LOGIC ---
@@ -148,11 +154,15 @@ public class WaterDataConsumer {
                 // Force shutoff
                 commandService.setCommand(account.getDeviceId(), "valveOpen", false);
                 // Notify via Kafka for dashboard "WOW" factor
-                Map<String, Object> targetReachedAlert = new java.util.HashMap<>();
-                targetReachedAlert.put("deviceId", account.getDeviceId());
-                targetReachedAlert.put("status", "TARGET_REACHED");
-                targetReachedAlert.put("usage", account.getCumulativeUsage());
-                producer.sendMessage(objectMapper.writeValueAsString(targetReachedAlert));
+                try {
+                    Map<String, Object> targetReachedAlert = new java.util.HashMap<>();
+                    targetReachedAlert.put("deviceId", account.getDeviceId());
+                    targetReachedAlert.put("status", "TARGET_REACHED");
+                    targetReachedAlert.put("usage", account.getCumulativeUsage());
+                    producer.sendMessage(objectMapper.writeValueAsString(targetReachedAlert));
+                } catch (Exception e) {
+                    log.error("Failed to send target reached notification: {}", e.getMessage());
+                }
             }
 
             userAccountRepository.save(account);

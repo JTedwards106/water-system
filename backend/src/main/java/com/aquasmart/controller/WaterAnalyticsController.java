@@ -5,10 +5,12 @@ import com.aquasmart.model.DeviceReading;
 import com.aquasmart.repository.DeviceReadingRepository;
 import com.aquasmart.repository.UserAccountRepository;
 import com.aquasmart.service.WaterDataProducer;
+import com.aquasmart.service.CommandService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -84,13 +86,16 @@ public class WaterAnalyticsController {
             com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(jsonData);
             String deviceId = node.has("deviceId") ? node.get("deviceId").asText() : "unknown";
 
-            // --- AUTOMATIC BALANCE ENFORCEMENT ---
-            enforceBalanceLimit(deviceId);
+            // --- AUTOMATIC SAFETY ENFORCEMENT ---
+            enforceSafetyLimits(deviceId);
 
             Map<String, Object> commands = commandService.getAndClearCommands(deviceId);
             response.put("commands", commands);
 
             return ResponseEntity.ok(objectMapper.writeValueAsString(response));
+        } catch (IOException e) {
+            log.warn("JSON ERROR: {}", e.getMessage());
+            return ResponseEntity.ok("{\"status\":\"error\",\"message\":\"JSON Error: " + e.getMessage() + "\"}");
         } catch (Exception e) {
             log.warn("ERROR PROCESSING REQUEST: {}", e.getMessage());
             return ResponseEntity.ok("{\"status\":\"error\",\"message\":\"" + e.getMessage() + "\"}");
@@ -179,7 +184,15 @@ public class WaterAnalyticsController {
     @PostMapping("/valve")
     public String toggleValve(@RequestParam String deviceId, @RequestParam boolean open) {
         setCommand(deviceId, "valveOpen", open ? "true" : "false");
+        log.info("Valve command for {}: {}", deviceId, open ? "OPEN" : "CLOSED");
         return "Valve status for " + deviceId + " set to " + (open ? "OPEN" : "CLOSED");
+    }
+
+    @PostMapping("/light")
+    public String toggleLight(@RequestParam String deviceId, @RequestParam boolean on) {
+        setCommand(deviceId, "lightOn", on ? "true" : "false");
+        log.info("Light command for {}: {}", deviceId, on ? "ON" : "OFF");
+        return "Light for " + deviceId + " set to " + (on ? "ON" : "OFF");
     }
 
     @PostMapping("/leak")
@@ -188,11 +201,17 @@ public class WaterAnalyticsController {
         return "Leak simulation for " + deviceId + " set to " + (active ? "ACTIVE" : "OFF");
     }
 
-    private void enforceBalanceLimit(String deviceId) {
+    private void enforceSafetyLimits(String deviceId) {
         userAccountRepository.findByDeviceId(deviceId).ifPresent(account -> {
+            // 1. Balance Check
             if (account.isValveDisabledByBalance()) {
                 log.warn("ENFORCING SHUTOFF for device {} due to low balance.", deviceId);
-                // Override any manual "open" command with a forced "close"
+                commandService.setCommand(deviceId, "valveOpen", false);
+            }
+            
+            // 2. Target Reach Check (Ensures zero-latency shutoff even if Kafka is slow)
+            if (account.isTargetReached()) {
+                log.warn("ENFORCING SHUTOFF for device {} due to water target reached.", deviceId);
                 commandService.setCommand(deviceId, "valveOpen", false);
             }
         });

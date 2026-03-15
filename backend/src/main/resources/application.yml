@@ -28,7 +28,7 @@ spring:
     role: ${SNOWFLAKE_ROLE:ACCOUNTADMIN}
 
 server:
-  port: 8081
+  port: 8085
 
 logging:
   level:

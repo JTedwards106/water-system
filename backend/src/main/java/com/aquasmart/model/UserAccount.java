@@ -35,11 +35,22 @@ public class UserAccount {
     @Column
     private String registeredPhone;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private BigDecimal targetAmount = BigDecimal.ZERO;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private BigDecimal cumulativeUsage = BigDecimal.ZERO;
+
+    @Column
+    private String cropType = "NONE";
+
+    // --- CROP WATER REQUIREMENTS (Liters) ---
+    public static final java.util.Map<String, BigDecimal> CROP_REQUIREMENTS = java.util.Map.of(
+        "TOMATOES", new BigDecimal("8.0"),
+        "LETTUCE", new BigDecimal("5.0"),
+        "CORN", new BigDecimal("10.0"),
+        "NONE", new BigDecimal("0.0")
+    );
 
     public UserAccount() {
     }
@@ -122,6 +133,10 @@ public class UserAccount {
         return cumulativeUsage;
     }
 
+    public String getCropType() {
+        return cropType;
+    }
+
     // ---- Setters ----
     public void setId(Long id) {
         this.id = id;
@@ -167,6 +182,10 @@ public class UserAccount {
         this.cumulativeUsage = cumulativeUsage;
     }
 
+    public void setCropType(String cropType) {
+        this.cropType = cropType;
+    }
+
     // ---- Builder ----
     public static Builder builder() {
         return new Builder();
@@ -182,6 +201,7 @@ public class UserAccount {
         private String registeredPhone;
         private BigDecimal targetAmount = BigDecimal.ZERO;
         private BigDecimal cumulativeUsage = BigDecimal.ZERO;
+        private String cropType = "NONE";
 
         public Builder deviceId(String v) {
             this.deviceId = v;
@@ -230,6 +250,11 @@ public class UserAccount {
 
         public Builder cumulativeUsage(BigDecimal v) {
             this.cumulativeUsage = v;
+            return this;
+        }
+
+        public Builder cropType(String v) {
+            this.cropType = v;
             return this;
         }
 
